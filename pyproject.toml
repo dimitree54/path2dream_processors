@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "path2dream_processors"
-version = "0.1.16"
+version = "0.1.17"
 description = "A template for a private Python package"
 authors = [
     {name = "Dmitrii Rashchenko", email = "dimitree54@gmail.com"},
