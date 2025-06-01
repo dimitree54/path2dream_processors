@@ -45,6 +45,7 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         LLAMA_CLOUD_API_KEY: ${{ secrets.LLAMA_CLOUD_API_KEY }}
         JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+        LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
       run: |
         source .venv/bin/activate
         python -m pytest -xvs -n auto # Use -n auto for pytest-xdist
