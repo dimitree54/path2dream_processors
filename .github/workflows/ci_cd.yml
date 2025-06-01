@@ -1,0 +1,88 @@
+name: CI/CD
+
+on: [push, pull_request]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+    - name: Install uv
+      run: |
+        pip install uv
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+    - name: Lint with ruff
+      run: |
+        source .venv/bin/activate
+        ruff check .
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+    - name: Install uv
+      run: |
+        pip install uv
+    - name: Install dependencies
+      run: |
+        uv venv
+        source .venv/bin/activate
+        uv pip install -e ".[dev]"
+    - name: Run tests in parallel
+      # env:
+        # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # Add any secrets your tests might need
+      run: |
+        source .venv/bin/activate
+        python -m pytest -xvs -n auto # Use -n auto for pytest-xdist
+  bump-version:
+    needs: [tests, ruff]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump version
+        uses: Clinical-Genomics/bump2version-ci@v3
+        env:
+          BUMPVERSION_TOKEN: ${{ secrets.BUMPVERSION_TOKEN }}
+          BUMPVERSION_AUTHOR: auto_bump_version
+          BUMPVERSION_EMAIL: actions@github.com
+          GITHUB_REPOSITORY: ${{ github.repository }}
+  deploy:
+    needs: bump-version
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: main
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install uv
+        run: |
+          pip install uv
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev]"
+      - name: Build and publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PUBLISH_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          python -m build
+          python -m twine upload dist/*

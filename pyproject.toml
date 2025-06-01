@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=67.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yid_public_package_template"
+version = "0.1.14"
+description = "A template for a private Python package"
+authors = [
+    {name = "Dmitrii Rashchenko", email = "dimitree54@gmail.com"},
+]
+readme = "README.md"
+requires-python = ">=3.9,<4.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License", # Or your preferred license
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # Add your package dependencies here
+    # e.g., "requests>=2.20"
+]
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=67.8.0",
+    "bump2version>=1.0.1",
+    "ruff",
+    "twine",
+    "wheel",
+    "pytest>=7.4.0",
+    "pytest-xdist>=3.3.1",
+    "build",
+]
+
+[project.urls]
+Homepage = "https://github.com/dimitree54/public_package_template"
+Repository = "https://github.com/dimitree54/public_package_template"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src", ".",
+]
+
+[tool.ruff]
+line-length = 120
