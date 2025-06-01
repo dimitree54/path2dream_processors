@@ -1,5 +1,6 @@
 import pytest
 import os
+from pathlib import Path
 from path2dream_processors.file_parser import APIBasedFileParser
 
 
@@ -10,10 +11,21 @@ async def test_real_audio_parsing():
         pytest.fail("OPENAI_API_KEY environment variable is required for this test")
     
     parser = APIBasedFileParser()
-    test_file = "/Users/fun/Downloads/test.mp3"
     
-    if not os.path.exists(test_file):
-        pytest.fail(f"Test file {test_file} not found - create this file for testing")
+    # Try multiple possible test file locations
+    test_files = [
+        "tests/data/test.mp3",
+        "/Users/fun/Downloads/test.mp3"
+    ]
+    
+    test_file = None
+    for path in test_files:
+        if os.path.exists(path):
+            test_file = path
+            break
+    
+    if not test_file:
+        pytest.fail(f"No test audio file found. Create one of: {test_files}")
     
     result = await parser._parse_audio(test_file)
     
@@ -30,10 +42,21 @@ async def test_real_pdf_parsing():
         pytest.fail("LLAMA_CLOUD_API_KEY environment variable is required for this test")
     
     parser = APIBasedFileParser()
-    test_file = "/Users/fun/Downloads/test.pdf"
     
-    if not os.path.exists(test_file):
-        pytest.fail(f"Test file {test_file} not found - create this file for testing")
+    # Try multiple possible test file locations
+    test_files = [
+        "tests/data/test.pdf",
+        "/Users/fun/Downloads/test.pdf"
+    ]
+    
+    test_file = None
+    for path in test_files:
+        if os.path.exists(path):
+            test_file = path
+            break
+    
+    if not test_file:
+        pytest.fail(f"No test PDF file found. Create one of: {test_files}")
     
     result = await parser._parse_document(test_file)
     
@@ -64,21 +87,25 @@ async def test_real_parse_files_integration():
     # Build list of available files/URLs to test
     files = []
     
-    # Add audio file if exists and API key is available
-    audio_file = "/Users/fun/Downloads/test.mp3"
-    if os.path.exists(audio_file) and os.getenv('OPENAI_API_KEY'):
-        files.append(audio_file)
+    # Check for audio file in multiple locations
+    audio_files = ["tests/data/test.mp3", "/Users/fun/Downloads/test.mp3"]
+    for audio_file in audio_files:
+        if os.path.exists(audio_file) and os.getenv('OPENAI_API_KEY'):
+            files.append(audio_file)
+            break
     
-    # Add PDF file if exists and API key is available
-    pdf_file = "/Users/fun/Downloads/test.pdf"
-    if os.path.exists(pdf_file) and os.getenv('LLAMA_CLOUD_API_KEY'):
-        files.append(pdf_file)
+    # Check for PDF file in multiple locations
+    pdf_files = ["tests/data/test.pdf", "/Users/fun/Downloads/test.pdf"]
+    for pdf_file in pdf_files:
+        if os.path.exists(pdf_file) and os.getenv('LLAMA_CLOUD_API_KEY'):
+            files.append(pdf_file)
+            break
     
     # Always add URL (works even without API key)
     files.append("https://www.python.org/")
     
-    if not files:
-        pytest.fail("No test files or URLs available - add test files or API keys")
+    if len(files) == 1:  # Only URL
+        pytest.fail("No test files found. Add test files to tests/data/ or provide API keys")
     
     result = await parser.parse_files(files)
     
