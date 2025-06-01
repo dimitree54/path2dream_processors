@@ -1,39 +1,23 @@
-from typing import List
-from abc import ABC, abstractmethod
-
-class SummaryProcessor(ABC):
-    """Interface for generating document summary."""
-    
-    @abstractmethod
-    def generate_summary(self, text_blocks: List[str]) -> str:
-        """
-        Generate summary based on text blocks.
-        
-        Args:
-            text_blocks: List of document text blocks
-            
-        Returns:
-            Document summary
-        """
-        pass 
+from typing import List, Tuple
+from pydantic import BaseModel, Field
+from langchain_openai import ChatOpenAI
+from langchain import hub
+from dotenv import load_dotenv
 
 
-class MockSummaryProcessor(SummaryProcessor):
-    """Mock summary processor for initial development."""
-    
-    def generate_summary(self, text_blocks: List[str]) -> str:
-        """Generate test document summary."""
-        if not text_blocks:
-            return "Document contains no text content."
-        
-        word_count = len(" ".join(text_blocks).split())
-        block_count = len(text_blocks)
-        
-        return (
-            f"Document Summary:\n"
-            f"- Text blocks: {block_count}\n"
-            f"- Approximate word count: {word_count}\n"
-            f"- Content type: {'Short' if word_count < 100 else 'Medium' if word_count < 500 else 'Long'}\n"
-            f"- Main topics: development, testing, architecture\n"
-            f"- Status: Processed successfully"
-        ) 
+class TitleAndSummary(BaseModel):
+    title: str = Field(description="The title of the document")
+    summary: str = Field(description="The short summarization of all insights of this document in relevance to the purpose of the project.")
+
+
+class LangChainSummaryProcessor:
+    def __init__(self):
+        llm = ChatOpenAI(model="gpt-4.1", temperature=0)
+        llm = llm.with_structured_output(TitleAndSummary)
+        prompt = hub.pull("path2dream_context_summarizer")
+        self.chain = prompt | llm
+
+    async def generate_summary(self, context: str, text_blocks: List[str]) -> Tuple[str, str]:
+        aggregated_text = "\n".join(text_blocks)
+        result = await self.chain.ainvoke({"context": context, "new_document": aggregated_text})
+        return result.title, result.summary
