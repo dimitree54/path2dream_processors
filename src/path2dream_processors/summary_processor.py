@@ -12,7 +12,7 @@ class TitleAndSummary(BaseModel):
 
 class LangChainSummaryProcessor:
     def __init__(self):
-        llm = ChatOpenAI(model="gpt-4.1", temperature=0)
+        llm = ChatOpenAI(model="gpt-o4-mini", reasoning_effort="high", service_tier="flex")
         llm = llm.with_structured_output(TitleAndSummary)
         prompt = hub.pull("path2dream_context_summarizer")
         self.chain = prompt | llm
