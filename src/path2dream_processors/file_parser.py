@@ -1,7 +1,6 @@
 from typing import List
 from pathlib import Path
 from enum import Enum
-from abc import ABC, abstractmethod
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -53,7 +52,7 @@ DOCUMENT_EXTENSIONS = {
 
 
 class APIBasedFileParser:
-    """Mock file parser for initial development."""
+    """Real file parser using APIs."""
     
     def parse_files(self, file_paths: List[str]) -> str:
         """Parse multiple files and return combined text representation."""
