@@ -2,7 +2,6 @@ from typing import List, Tuple
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain import hub
-from dotenv import load_dotenv
 
 
 class TitleAndSummary(BaseModel):
