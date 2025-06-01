@@ -3,10 +3,11 @@ from pathlib import Path
 from enum import Enum
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+import asyncio
+import aiohttp
+from openai import AsyncOpenAI
 import nest_asyncio
 from llama_parse import LlamaParse
-import requests
 from urllib.parse import urlparse
 
 # Load environment variables
@@ -52,68 +53,78 @@ DOCUMENT_EXTENSIONS = {
 
 
 class APIBasedFileParser:
-    """Real file parser using APIs."""
+    """Real file parser using APIs with async support."""
     
-    def parse_files(self, file_paths: List[str]) -> str:
-        """Parse multiple files and return combined text representation."""
+    async def parse_files(self, file_paths: List[str]) -> str:
+        """Parse multiple files asynchronously and return combined text representation."""
         if not file_paths:
             return ""
         
         results = []
         results.append("=== PARSED FILE CONTENT ===")
         
+        # Create tasks for all files to parse them concurrently
+        tasks = []
         for file_path in file_paths:
-            try:
-                file_type = self._get_file_type(file_path)
-                
-                if file_type == FileType.AUDIO:
-                    content = self._parse_audio(file_path)
-                elif file_type == FileType.IMAGE:
-                    content = self._parse_image(file_path)
-                elif file_type == FileType.DOCUMENT:
-                    content = self._parse_document(file_path)
-                elif file_type == FileType.VIDEO:
-                    content = self._parse_video(file_path)
-                elif file_type == FileType.URL:
-                    content = self._parse_url(file_path)
-                else:
-                    raise NotImplementedError(f"File type '{file_type.value}' is not supported")
-                
-                # Format file name for display
-                if file_type == FileType.URL:
-                    # Extract domain from URL for cleaner display
-                    parsed_url = urlparse(file_path)
-                    display_name = parsed_url.netloc
-                else:
-                    display_name = Path(file_path).name
-                
-                results.append(f"\nFile: {display_name}")
-                results.append(content)
-                results.append("-" * 40)
-                
-            except NotImplementedError as e:
-                # Format file name for display (same logic as above)
-                if self._get_file_type(file_path) == FileType.URL:
-                    parsed_url = urlparse(file_path)
-                    display_name = parsed_url.netloc
-                else:
-                    display_name = Path(file_path).name
-                    
-                results.append(f"\nFile: {display_name}")
-                results.append(f"Error: {str(e)}")
-                results.append("-" * 40)
+            task = self._parse_single_file(file_path)
+            tasks.append(task)
+        
+        # Execute all parsing tasks concurrently
+        file_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        for file_path, result in zip(file_paths, file_results):
+            file_type = self._get_file_type(file_path)
+            
+            # Format file name for display
+            if file_type == FileType.URL:
+                # Extract domain from URL for cleaner display
+                parsed_url = urlparse(file_path)
+                display_name = parsed_url.netloc
+            else:
+                display_name = Path(file_path).name
+            
+            results.append(f"\nFile: {display_name}")
+            
+            if isinstance(result, Exception):
+                results.append(f"Error: {str(result)}")
+            else:
+                results.append(result)
+            
+            results.append("-" * 40)
         
         return "\n".join(results)
     
-    def _parse_audio(self, file_path: str) -> str:
-        """Parse single audio file using OpenAI Whisper API."""
+    async def _parse_single_file(self, file_path: str) -> str:
+        """Parse a single file asynchronously."""
         try:
-            # Initialize OpenAI client
-            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            file_type = self._get_file_type(file_path)
+            
+            if file_type == FileType.AUDIO:
+                return await self._parse_audio(file_path)
+            elif file_type == FileType.IMAGE:
+                return await self._parse_image(file_path)
+            elif file_type == FileType.DOCUMENT:
+                return await self._parse_document(file_path)
+            elif file_type == FileType.VIDEO:
+                return await self._parse_video(file_path)
+            elif file_type == FileType.URL:
+                return await self._parse_url(file_path)
+            else:
+                raise NotImplementedError(f"File type '{file_type.value}' is not supported")
+                
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    async def _parse_audio(self, file_path: str) -> str:
+        """Parse single audio file using OpenAI Whisper API asynchronously."""
+        try:
+            # Initialize async OpenAI client
+            client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             
             # Open and transcribe audio file
             with open(file_path, 'rb') as audio_file:
-                transcript = client.audio.transcriptions.create(
+                transcript = await client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     response_format="text"
@@ -124,11 +135,11 @@ class APIBasedFileParser:
         except Exception as e:
             return f"Error transcribing audio: {str(e)}"
     
-    def _parse_image(self, file_path: str) -> str:
+    async def _parse_image(self, file_path: str) -> str:
         """Parse single image file."""
         raise NotImplementedError("Image processing is not supported yet")
     
-    def _parse_document(self, file_path: str) -> str:
+    async def _parse_document(self, file_path: str) -> str:
         """Parse single document file using LlamaParse API."""
         try:
             # Check if file is PDF (LlamaParse only supports PDF currently)
@@ -149,8 +160,9 @@ class APIBasedFileParser:
                 show_progress=False
             )
             
-            # Parse the document
-            documents = parser.load_data(file_path)
+            # Parse the document - LlamaParse runs in async context due to nest_asyncio
+            loop = asyncio.get_event_loop()
+            documents = await loop.run_in_executor(None, parser.load_data, file_path)
             
             # Extract text content
             if documents:
@@ -162,12 +174,12 @@ class APIBasedFileParser:
         except Exception as e:
             return f"Error parsing document: {str(e)}"
     
-    def _parse_video(self, file_path: str) -> str:
+    async def _parse_video(self, file_path: str) -> str:
         """Parse single video file."""
         raise NotImplementedError("Video processing is not supported yet")
     
-    def _parse_url(self, file_path: str) -> str:
-        """Parse URL content using Jina Reader API."""
+    async def _parse_url(self, file_path: str) -> str:
+        """Parse URL content using Jina Reader API asynchronously."""
         try:
             # Ensure the input is a valid URL
             if not file_path.startswith(('http://', 'https://')):
@@ -187,32 +199,35 @@ class APIBasedFileParser:
             if jina_api_key:
                 headers['Authorization'] = f'Bearer {jina_api_key}'
             
-            # Make request to Jina Reader
-            response = requests.get(jina_url, headers=headers, timeout=30)
-            response.raise_for_status()
-            
-            # Parse response
-            if response.headers.get('content-type', '').startswith('application/json'):
-                data = response.json()
-                content = data.get('data', {}).get('content', '')
-                title = data.get('data', {}).get('title', '')
-                
-                if content:
-                    result = f"Web content from: {title}\n\n{content}" if title else f"Web content: {content}"
-                    return result
-                else:
-                    return "URL parsing: No content extracted from the webpage"
-            else:
-                # If response is plain text (markdown)
-                content = response.text.strip()
-                if content:
-                    return f"Web content: {content}"
-                else:
-                    return "URL parsing: No content extracted from the webpage"
+            # Make async request to Jina Reader
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(jina_url, headers=headers) as response:
+                    response.raise_for_status()
                     
-        except requests.exceptions.Timeout:
+                    # Parse response
+                    content_type = response.headers.get('content-type', '')
+                    if content_type.startswith('application/json'):
+                        data = await response.json()
+                        content = data.get('data', {}).get('content', '')
+                        title = data.get('data', {}).get('title', '')
+                        
+                        if content:
+                            result = f"Web content from: {title}\n\n{content}" if title else f"Web content: {content}"
+                            return result
+                        else:
+                            return "URL parsing: No content extracted from the webpage"
+                    else:
+                        # If response is plain text (markdown)
+                        content = (await response.text()).strip()
+                        if content:
+                            return f"Web content: {content}"
+                        else:
+                            return "URL parsing: No content extracted from the webpage"
+                            
+        except asyncio.TimeoutError:
             return "Error parsing URL: Request timeout (30 seconds exceeded)"
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
             return f"Error parsing URL: Network error - {str(e)}"
         except Exception as e:
             return f"Error parsing URL: {str(e)}"

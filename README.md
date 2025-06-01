@@ -18,6 +18,7 @@ A powerful and extensible file processing library that converts various file typ
 
 ### Key Benefits
 
+- **Async Processing**: Full async/await support for concurrent file processing
 - **Clean Content Extraction**: Automatically removes ads, cookie banners, and navigation elements from web pages
 - **High Accuracy**: Uses industry-leading APIs (OpenAI Whisper, LlamaParse, Jina Reader)
 - **Robust Error Handling**: Comprehensive error handling with descriptive messages
@@ -35,21 +36,26 @@ pip install path2dream-processors
 ### Basic Usage
 
 ```python
-from path2dream_processors.file_parser import MockFileParser
+import asyncio
+from path2dream_processors.file_parser import APIBasedFileParser
 
-# Initialize the parser
-parser = MockFileParser()
+async def main():
+    # Initialize the parser
+    parser = APIBasedFileParser()
 
-# Process multiple files of different types
-files = [
-    "presentation.pdf",           # Document
-    "meeting_recording.mp3",      # Audio
-    "https://example.com/article" # Web page
-]
+    # Process multiple files of different types concurrently
+    files = [
+        "presentation.pdf",           # Document
+        "meeting_recording.mp3",      # Audio
+        "https://example.com/article" # Web page
+    ]
 
-# Get clean text content
-result = parser.parse_files(files)
-print(result)
+    # Get clean text content (all files processed in parallel)
+    result = await parser.parse_files(files)
+    print(result)
+
+# Run the async function
+asyncio.run(main())
 ```
 
 ### Environment Setup
@@ -76,9 +82,9 @@ class FileParser(ABC):
     """Interface for parsing files to text representation."""
     
     @abstractmethod
-    def parse_files(self, file_paths: List[str]) -> str:
+    async def parse_files(self, file_paths: List[str]) -> str:
         """
-        Convert files to text representation.
+        Convert files to text representation asynchronously.
         
         Args:
             file_paths: List of local file paths or URLs
@@ -89,25 +95,25 @@ class FileParser(ABC):
         pass
 ```
 
-### MockFileParser Implementation
+### APIBasedFileParser Implementation
 
-Currently available implementation with full API integration:
+Production-ready async file parser with full API integration:
 
 ```python
-class MockFileParser(FileParser):
-    """Production-ready file parser with API integrations."""
+class APIBasedFileParser:
+    """Real file parser using APIs with async support."""
     
-    def parse_files(self, file_paths: List[str]) -> str:
-        """Parse multiple files and return combined text representation."""
+    async def parse_files(self, file_paths: List[str]) -> str:
+        """Parse multiple files concurrently and return combined text representation."""
         
-    def _parse_audio(self, file_path: str) -> str:
-        """Parse audio file using OpenAI Whisper API."""
+    async def _parse_audio(self, file_path: str) -> str:
+        """Parse audio file using OpenAI Whisper API asynchronously."""
         
-    def _parse_document(self, file_path: str) -> str:
+    async def _parse_document(self, file_path: str) -> str:
         """Parse PDF document using LlamaParse API."""
         
-    def _parse_url(self, file_path: str) -> str:
-        """Parse URL content using Jina Reader API."""
+    async def _parse_url(self, file_path: str) -> str:
+        """Parse URL content using Jina Reader API asynchronously."""
         
     def _get_file_type(self, file_path: str) -> FileType:
         """Determine file type by extension or URL pattern."""
@@ -131,63 +137,91 @@ DOCUMENT_EXTENSIONS = {'.pdf', '.docx', '.txt', '.xlsx', ...}
 ### Processing Audio Files
 
 ```python
-parser = MockFileParser()
+import asyncio
 
-# Transcribe audio to text
-result = parser.parse_files(["interview.mp3"])
-print(result)
-# Output:
-# === PARSED FILE CONTENT ===
-# 
-# File: interview.mp3
-# Audio transcription: This is the transcribed content from the audio file...
-# ----------------------------------------
+async def process_audio():
+    parser = APIBasedFileParser()
+
+    # Transcribe audio to text
+    result = await parser.parse_files(["interview.mp3"])
+    print(result)
+    # Output:
+    # === PARSED FILE CONTENT ===
+    # 
+    # File: interview.mp3
+    # Audio transcription: This is the transcribed content from the audio file...
+    # ----------------------------------------
+
+asyncio.run(process_audio())
 ```
 
 ### Processing Documents
 
 ```python
-# Extract text from PDF with structure preservation
-result = parser.parse_files(["report.pdf"])
-print(result)
-# Output:
-# === PARSED FILE CONTENT ===
-# 
-# File: report.pdf  
-# Document content: # Executive Summary
-# 
-# This report analyzes...
-# ----------------------------------------
+import asyncio
+
+async def process_document():
+    parser = APIBasedFileParser()
+    
+    # Extract text from PDF with structure preservation
+    result = await parser.parse_files(["report.pdf"])
+    print(result)
+    # Output:
+    # === PARSED FILE CONTENT ===
+    # 
+    # File: report.pdf  
+    # Document content: # Executive Summary
+    # 
+    # This report analyzes...
+    # ----------------------------------------
+
+asyncio.run(process_document())
 ```
 
 ### Processing Web Pages
 
 ```python
-# Extract clean content from web pages
-result = parser.parse_files(["https://example.com/article"])
-print(result)
-# Output:
-# === PARSED FILE CONTENT ===
-# 
-# File: example.com
-# Web content from: Article Title
-# 
-# Clean article content without ads or navigation...
-# ----------------------------------------
+import asyncio
+
+async def process_webpage():
+    parser = APIBasedFileParser()
+    
+    # Extract clean content from web pages
+    result = await parser.parse_files(["https://example.com/article"])
+    print(result)
+    # Output:
+    # === PARSED FILE CONTENT ===
+    # 
+    # File: example.com
+    # Web content from: Article Title
+    # 
+    # Clean article content without ads or navigation...
+    # ----------------------------------------
+
+asyncio.run(process_webpage())
 ```
 
-### Mixed File Processing
+### Mixed File Processing (Concurrent)
 
 ```python
-# Process multiple file types at once
-files = [
-    "audio.mp3",
-    "document.pdf", 
-    "https://news.site/article"
-]
+import asyncio
 
-result = parser.parse_files(files)
-# Returns combined clean text from all sources
+async def process_mixed_files():
+    parser = APIBasedFileParser()
+    
+    # Process multiple file types concurrently
+    files = [
+        "audio.mp3",
+        "document.pdf", 
+        "https://news.site/article"
+    ]
+
+    # All files are processed in parallel for faster execution
+    result = await parser.parse_files(files)
+    print(result)
+    # Returns combined clean text from all sources
+
+asyncio.run(process_mixed_files())
 ```
 
 ## 🔑 API Keys Setup
@@ -209,7 +243,7 @@ result = parser.parse_files(files)
 
 ## 🧪 Testing
 
-The package includes comprehensive testing:
+The package includes comprehensive testing with async support:
 
 ```bash
 # Run all tests
@@ -229,6 +263,7 @@ pytest tests/ -k "Integration"
 
 ### Design Principles
 
+- **Async-First**: Full async/await support for concurrent processing
 - **Interface Segregation**: Clean abstract interface for easy testing and mocking
 - **Single Responsibility**: Each parser method handles one file type
 - **Dependency Inversion**: Relies on external APIs through well-defined interfaces
@@ -239,18 +274,21 @@ pytest tests/ -k "Integration"
 To add support for new file types:
 
 1. Add file extensions to the appropriate constant
-2. Implement `_parse_<type>` method in `MockFileParser`
+2. Implement async `_parse_<type>` method in `APIBasedFileParser`
 3. Add corresponding `FileType` enum value
 4. Update `_get_file_type` method
-5. Add comprehensive tests
+5. Add comprehensive tests with async support
 
 ### Example: Adding Image Support
 
 ```python
-def _parse_image(self, file_path: str) -> str:
+async def _parse_image(self, file_path: str) -> str:
     """Parse image file using vision API."""
     try:
-        # Your image processing logic here
+        # Your async image processing logic here
+        async with aiohttp.ClientSession() as session:
+            # API call logic
+            pass
         return f"Image description: {description}"
     except Exception as e:
         return f"Error processing image: {str(e)}"
@@ -262,7 +300,7 @@ We welcome contributions! Please see our contributing guidelines:
 
 1. Fork the repository
 2. Create a feature branch
-3. Add tests for your changes
+3. Add tests for your changes (including async tests)
 4. Ensure all tests pass
 5. Submit a pull request
 
