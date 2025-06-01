@@ -5,6 +5,7 @@ from langchain import hub
 
 
 class TitleAndSummary(BaseModel):
+    reasoning: str = Field(description="Provide your detailed reasoning chain of thought of what is important in this document to be included as title and summary?")
     title: str = Field(description="The title of the document")
     summary: str = Field(description="The short summarization of all insights of this document in relevance to the purpose of the project.")
 
