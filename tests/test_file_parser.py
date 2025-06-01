@@ -1,6 +1,5 @@
 import pytest
 import os
-from pathlib import Path
 from path2dream_processors.file_parser import APIBasedFileParser
 
 
