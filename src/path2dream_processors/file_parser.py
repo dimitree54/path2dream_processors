@@ -2,19 +2,11 @@ from typing import List
 from pathlib import Path
 from enum import Enum
 import os
-from dotenv import load_dotenv
 import asyncio
 import aiohttp
 from openai import AsyncOpenAI
-import nest_asyncio
 from llama_parse import LlamaParse
 from urllib.parse import urlparse
-
-# Load environment variables
-load_dotenv()
-
-# Apply nest_asyncio for LlamaParse
-nest_asyncio.apply()
 
 
 class FileType(Enum):
@@ -160,9 +152,8 @@ class APIBasedFileParser:
                 show_progress=False
             )
             
-            # Parse the document - LlamaParse runs in async context due to nest_asyncio
-            loop = asyncio.get_event_loop()
-            documents = await loop.run_in_executor(None, parser.load_data, file_path)
+            # Parse the document - LlamaParse has native async support
+            documents = await parser.aload_data(file_path)
             
             # Extract text content
             if documents:
